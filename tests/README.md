@@ -15,6 +15,6 @@ Both need files from your own copy of the game. Copy them somewhere first rather
 
 ## Harness
 
-`tests/run_harness.sh <forza_durango_release_final.exe> <GameTunableSettings.zip>` lays out a folder like an Azimuth install, with the platform, `CCBR.dll` and the game, and runs `harness.exe` there as `azimuth.exe`. It maps the game's exe as Azimuth does (none of the game runs), waits for CCBR to check and hook the game's code, then sends speed camera events through the hooked functions with a fake player's car. Twice: once offline, and once laid out as if FH2MP's launcher had started the game, where CCBR must stay off. Each prints `ALL PASSED`.
+`tests/run_harness.sh <forza_durango_release_final.exe> <GameTunableSettings.zip>` lays out a folder like an Azimuth install, with the platform, `CCBR.dll` and the game, and runs `harness.exe` there as `azimuth.exe`. It maps the game's exe as Azimuth does (none of the game runs), waits for CCBR to check and hook the game's code, then sends speed camera events through the hooked functions with a fake player's car. Twice: once offline, and once laid out as if FH2MP's launcher had started the game, where the platform must keep CCBR out (it's marked offline-only). Each prints `ALL PASSED`.
 
 On Windows it runs the harness as it is; with `WINE=1` set, under Wine.

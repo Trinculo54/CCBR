@@ -1302,22 +1302,14 @@ void add_preset() {
              kPreset, kFallback);
 }
 
-// FH2ModInfo as platform 2.8.0 (API 9) has it, with offline_only after description.
-static_assert(FH2MOD_API_VERSION < 9, "fh2mod.h has FH2ModInfo.offline_only now: use it instead of Info");
-struct Info {
-    FH2ModInfo m;
-    int offline_only;
-};
-
 } // namespace
 
 FH2MOD_EXPORT int fh2mod_init(const FH2ModApi* api) {
     g_api = api;
     if (api->api_version < 3) return 1;
     read_settings();
-    Info info{};
-    FH2ModInfo& m      = info.m;
-    m.size             = sizeof info;
+    FH2ModInfo m{};
+    m.size             = sizeof m;
     m.name             = "CCBR";
     m.version          = CCBR_VERSION;
     m.github_repo      = "Trinculo54/CCBR";
@@ -1325,8 +1317,8 @@ FH2MOD_EXPORT int fh2mod_init(const FH2ModApi* api) {
     m.check_updates    = g_check_updates ? 1 : 0;
     m.description      = "Can't Crash, Busy Racing: your car is a ghost during speed zones, so you drive straight "
                          "through traffic and Drivatars, and they're see-through meanwhile. Offline only.";
-    info.offline_only  = 1;
-    if (api->api_version < 9) m.size = offsetof(Info, offline_only);
+    m.offline_only     = 1;
+    if (api->api_version < 9) m.size = offsetof(FH2ModInfo, offline_only);
     if (api->api_version < 6) m.size = offsetof(FH2ModInfo, description);
     g_mod = api->register_mod(&m);
     if (!g_mod) return 0; // platform 2.8.0 and later: started for online play
