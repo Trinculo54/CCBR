@@ -11,7 +11,7 @@ Both need files from your own copy of the game. Copy them somewhere first rather
 
 ## Unit test
 
-`unit_test.exe [GameTunableSettings.zip]` compiles `src/ccbr.cpp` with the game's functions replaced by fakes that record each car's collidable requests and what alpha the game would draw it with. It covers the ghost starting and ending with the zone, the other cars' alpha cap and the held hides, cars going away mid-zone, a ghost no event ends, the settings and the MODS page's changes, the online check and the preset file. Given the game's `media\GameTunableSettings.zip`, it also adds the preset to the game's own `collidablepresets.xml`. It runs in a few seconds and prints `ALL PASSED`.
+`unit_test.exe [GameTunableSettings.zip]` compiles `src/ccbr.cpp` with the game's functions replaced by fakes that record each car's collidable requests and what alpha the game would draw it with. It covers the ghost starting and ending with the zone, the other cars' alpha cap and the held hides, cars going away mid-zone, a ghost no event ends, the settings and the MODS page's changes, the online check, registering with each platform version (online with platform 2.8.0, and on a platform from before hooks) and the preset file. Given the game's `media\GameTunableSettings.zip`, it also adds the preset to the game's own `collidablepresets.xml`. It runs in a few seconds and prints `ALL PASSED`.
 
 ## Harness
 
