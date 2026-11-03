@@ -1302,33 +1302,50 @@ void add_preset() {
              kPreset, kFallback);
 }
 
-// FH2ModInfo as platform 2.8.0 (API 9) has it, with offline_only after description.
-static_assert(FH2MOD_API_VERSION < 9, "fh2mod.h has FH2ModInfo.offline_only now: use it instead of Info");
-struct Info {
-    FH2ModInfo m;
-    int offline_only;
-};
-
-} // namespace
-
-FH2MOD_EXPORT int fh2mod_init(const FH2ModApi* api) {
-    g_api = api;
-    if (api->api_version < 3) return 1;
-    read_settings();
-    Info info{};
-    FH2ModInfo& m      = info.m;
-    m.size             = sizeof info;
+// What CCBR tells the platform about itself, as much of it as that platform's FH2ModInfo has: offline_only
+// from platform 2.8.0 (API 9), description from 2.5.0 (API 6).
+FH2ModInfo mod_info(uint32_t api_version, bool check_updates) {
+    FH2ModInfo m{};
+    m.size             = sizeof m;
     m.name             = "CCBR";
     m.version          = CCBR_VERSION;
     m.github_repo      = "Trinculo54/CCBR";
     m.platform_version = FH2MOD_PLATFORM_VERSION;
-    m.check_updates    = g_check_updates ? 1 : 0;
+    m.check_updates    = check_updates ? 1 : 0;
     m.description      = "Can't Crash, Busy Racing: your car is a ghost during speed zones, so you drive straight "
                          "through traffic and Drivatars, and they're see-through meanwhile. Offline only.";
-    info.offline_only  = 1;
-    if (api->api_version < 9) m.size = offsetof(Info, offline_only);
-    if (api->api_version < 6) m.size = offsetof(FH2ModInfo, description);
-    g_mod = api->register_mod(&m);
+    m.offline_only     = 1;
+    if (api_version < 9) m.size = offsetof(FH2ModInfo, offline_only);
+    if (api_version < 6) m.size = offsetof(FH2ModInfo, description);
+    return m;
+}
+
+// A platform from before hooks (2.0 or 2.1, API 1 and 2), put back by another mod's zip. Only API 1 here
+// (register_mod, log, azimuth_dir): registering is what puts "Old FH2 Mod Platform: reinstall CCBR" on the
+// title screen, so the player learns what to do instead of the mod just vanishing. CCBR's own state is left
+// alone: Azimuth 1.0.1 loads both platform DLLs, and platform 2.8.0 can't see a copy older than 2.3.0 (it
+// finds other copies by their RestartHelper export), so neither stands down and a newer platform may have
+// started CCBR in this game already.
+int start_on_old_platform(const FH2ModApi* api) {
+    const std::wstring ini   = std::wstring(api->azimuth_dir) + L"\\fh2-mods\\CCBR.ini";
+    const bool check_updates = GetPrivateProfileIntW(L"CCBR", L"CheckUpdates", 1, ini.c_str()) != 0;
+    const FH2ModInfo info    = mod_info(api->api_version, check_updates);
+    FH2Mod* mod              = api->register_mod(&info);
+    if (!mod) return 1;
+    api->log(mod, "needs FH2 Mod Platform 2.2.0 or newer, so it's off. An older platform from another mod's zip is "
+                  "running: extract CCBR's zip again to get the platform it comes with.");
+    return 0;
+}
+
+} // namespace
+
+FH2MOD_EXPORT int fh2mod_init(const FH2ModApi* api) {
+    if (!api) return 1;
+    if (api->api_version < 3) return start_on_old_platform(api); // hooks came with platform 2.2.0 (API 3)
+    g_api = api;
+    read_settings();
+    const FH2ModInfo info = mod_info(api->api_version, g_check_updates);
+    g_mod                 = api->register_mod(&info);
     if (!g_mod) return 0; // platform 2.8.0 and later: started for online play
     if (api->api_version < 9 && started_online()) {
         logf("started for online play (FH2MP): off, since a ghost would only be one on your own screen");

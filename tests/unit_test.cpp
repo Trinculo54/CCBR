@@ -26,6 +26,15 @@ bool logged(const char* s) {
     return false;
 }
 
+// register_mod: keeps what it was given (as much as its size says), and registers or not.
+FH2ModInfo g_registered;
+bool g_register_ok = true;
+FH2Mod* fake_register(const FH2ModInfo* info) {
+    g_registered = {};
+    std::memcpy(&g_registered, info, info->size < sizeof g_registered ? info->size : sizeof g_registered);
+    return g_register_ok ? reinterpret_cast<FH2Mod*>(&g_registered) : nullptr;
+}
+
 std::map<void*, std::set<std::string>> g_requests; // per request set (car + 0x4C58)
 std::set<void*> g_freed;                          // freed cars: must never be touched
 int g_touched_freed = 0;
@@ -240,6 +249,42 @@ int main(int argc, char** argv) {
     CHECK(started_online());
     fs::remove(dir / "data" / "bin" / "fh2mp-session.txt");
     CHECK(!started_online());
+
+    // Registering: offline_only from platform 2.8.0, and as much of FH2ModInfo as an older platform has.
+    {
+        const FH2ModInfo now = mod_info(9, true);
+        CHECK(now.size == sizeof(FH2ModInfo) && now.offline_only == 1 && now.check_updates == 1);
+        CHECK(std::strcmp(now.name, "CCBR") == 0 && std::strcmp(now.github_repo, "Trinculo54/CCBR") == 0);
+        CHECK(now.description && std::strcmp(now.platform_version, FH2MOD_PLATFORM_VERSION) == 0);
+        CHECK(mod_info(8, false).size == offsetof(FH2ModInfo, offline_only) && mod_info(8, false).check_updates == 0);
+        CHECK(mod_info(5, true).size == offsetof(FH2ModInfo, description));
+        // Platform 2.8.0 online: it keeps CCBR out, and fh2mod_init returns before doing anything.
+        api.register_mod = fake_register;
+        g_register_ok    = false;
+        g_lines.clear();
+        CHECK(fh2mod_init(&api) == 0);
+        CHECK(g_registered.size == sizeof(FH2ModInfo) && g_registered.offline_only == 1);
+        CHECK(g_mod == nullptr && g_lines.empty());
+        // A platform from before hooks (2.0 or 2.1): registered for the title screen's notice, with a log line,
+        // and CCBR's own state left alone (a newer platform may have started it in the same game).
+        WritePrivateProfileStringW(L"CCBR", L"CheckUpdates", L"0", (dir / "fh2-mods" / "CCBR.ini").c_str());
+        static FH2ModApi old{};
+        old.api_version  = 2;
+        old.azimuth_dir  = api.azimuth_dir;
+        old.register_mod = fake_register;
+        old.log          = fake_log;
+        g_register_ok    = true;
+        CHECK(fh2mod_init(&old) == 0);
+        CHECK(g_registered.size == offsetof(FH2ModInfo, description) && g_registered.check_updates == 0);
+        CHECK(std::strcmp(g_registered.name, "CCBR") == 0 && std::strcmp(g_registered.version, CCBR_VERSION) == 0);
+        CHECK(logged("needs FH2 Mod Platform 2.2.0 or newer, so it's off") && logged("extract CCBR's zip again"));
+        CHECK(g_api == &api && g_mod == nullptr);
+        g_register_ok = false;
+        CHECK(fh2mod_init(&old) == 1); // not registered: nothing to tell the player through
+        CHECK(fh2mod_init(nullptr) == 1);
+        api.register_mod = nullptr;
+        g_lines.clear();
+    }
     fs::remove_all(dir);
     g_debug = true;
     g_vt[VT_CAR_APPLY] = reinterpret_cast<void*>(&fake_apply);

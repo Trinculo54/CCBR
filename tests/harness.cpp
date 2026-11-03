@@ -101,16 +101,15 @@ int wmain(int argc, wchar_t** argv) {
     char* game = map_game(argv[1]);
     CHECK(game == reinterpret_cast<char*>(0x140000000));
     if (!game) return 1;
-    std::string log = wait_for(online ? "[CCBR] started for online play" : "[CCBR] ready", 20);
+    std::string log = wait_for(online ? "[CCBR] 1.0.0 doesn't run in online play" : "[CCBR] ready", 20);
 
     if (online) {
-        // Started from FH2MP's launcher: registered (it's on the MODS tab), but nothing else.
+        // Started from FH2MP's launcher: the platform keeps CCBR out (offline_only), so nothing else happens.
         Sleep(1000);
         log = slurp(L"fh2-mods\\platform.log");
         std::printf("---- platform.log\n%s----\n", log.c_str());
-        CHECK(has(log, "[CCBR] 1.0.0 registered"));
-        CHECK(has(log, "[CCBR] started for online play (FH2MP): off, since a ghost would only be one on your own "
-                       "screen"));
+        CHECK(has(log, "[CCBR] 1.0.0 doesn't run in online play (its author says so), so it isn't started"));
+        CHECK(!has(log, "[CCBR] 1.0.0 registered"));
         CHECK(!has(log, "[CCBR] hooked"));
         CHECK(!has(log, "[CCBR] added the"));
         CHECK(!fs::exists(L"FH2\\Mount\\mediaoverride\\GameTunableSettings\\collidablepresets.xml"));
